@@ -1,7 +1,6 @@
 # xBRgo
 
-This command-line tool scales pixel-art images using the xBR algorithm and
-writes the results as PNG files.
+**xBRgo** is a Go implementation of the xBR pixel-art scaling algorithm. It provides an importable Go package for integration into other projects and a command-line tool for batch image processing.
 
 ![](input/image.png)
 ![](output/image.png)
