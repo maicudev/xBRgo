@@ -76,12 +76,14 @@ scaled, err := xbr.Scale(src, 2, options)
 Build the executable from the `cli` directory:
 
 ```bash
-go build -o xbr ./cli
+cd ./cli
+go build -o ../xbr 
 ```
 
 Run it with an input directory and an output directory:
 
 ```bash
+cd ..
 ./xbr -factor 4 ./input ./output
 ```
 

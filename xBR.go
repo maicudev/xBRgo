@@ -1,4 +1,4 @@
-package xbr
+package xBRgo
 
 import (
 	"fmt"
