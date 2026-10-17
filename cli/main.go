@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	xbr "github.com/maicudev/xBRgo"
 )
 
 func main() {
@@ -84,7 +86,7 @@ func convertFile(inputPath, outputPath string, factor int) error {
 		return err
 	}
 
-	scaled, err := Scale(src, factor, Options{BlendColors: true})
+	scaled, err := xbr.Scale(src, factor, xbr.DefaultOptions())
 	if err != nil {
 		return err
 	}

@@ -10,45 +10,86 @@ writes the results as PNG files.
 
 - Go 1.21 or newer
 
-## Usage
+## Use as a Go package
 
-Run the program with an input directory and an output directory:
+Import the module and call `xbr.Scale` with any `image.Image`:
 
-```bash
-./xbr [options] <input-directory> <output-directory>
+```go
+package main
+
+import (
+	"image"
+	"image/png"
+	"os"
+
+	xbr "github.com/maicudev/xBRgo"
+)
+
+func main() {
+	input, err := os.Open("input.png")
+	if err != nil {
+		panic(err)
+	}
+	defer input.Close()
+
+	src, _, err := image.Decode(input)
+	if err != nil {
+		panic(err)
+	}
+
+	scaled, err := xbr.Scale(src, 4, xbr.DefaultOptions())
+	if err != nil {
+		panic(err)
+	}
+
+	output, err := os.Create("output.png")
+	if err != nil {
+		panic(err)
+	}
+	defer output.Close()
+
+	if err := png.Encode(output, scaled); err != nil {
+		panic(err)
+	}
+}
 ```
 
-Example:
-
-```bash
-./xbr -factor 4 ./input ./output
-```
-
-The `-factor` option is optional and defaults to `2`. Supported values are
-`2`, `3`, `4`, `6`, and `8`.
-
-Factors `6` and `8` are implemented as multiple xBR passes:
+Supported scale factors are `1`, `2`, `3`, `4`, `6`, and `8`. Factors `6` and
+`8` use multiple xBR passes:
 
 - `6x`: `3x` followed by `2x`
 - `8x`: `4x` followed by `2x`
 
-The tool processes PNG, JPG, JPEG, and GIF files located directly inside the
-input directory. Subdirectories are not scanned. Every output file is saved as
-PNG in the output directory, preserving the input file's base name.
+`xbr.DefaultOptions()` enables color blending. For custom behavior, pass an
+`xbr.Options` value directly:
 
-## Build and run the executable
-
-Build the binary:
-
-```bash
-go build -o xbr .
+```go
+options := xbr.Options{
+	BlendColors: true,
+	ScaleAlpha:  true,
+}
+scaled, err := xbr.Scale(src, 2, options)
 ```
 
-Run it:
+## Command-line tool
+
+Build the executable from the `cli` directory:
+
+```bash
+go build -o xbr ./cli
+```
+
+Run it with an input directory and an output directory:
 
 ```bash
 ./xbr -factor 4 ./input ./output
 ```
+
+The `-factor` option is optional and defaults to `2`. The tool processes PNG,
+JPG, JPEG, and GIF files located directly inside the input directory. It does
+not scan subdirectories. Results are always saved as PNG files in the output
+directory, preserving each input file's base name. The output directory is
+created automatically when it does not exist.
 
 ## Credits
 

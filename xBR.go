@@ -1,4 +1,4 @@
-package main
+package xbr
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"math"
 )
 
+// Options configures the xBR scaling behavior.
 type Options struct {
 	BlendColors bool
 	ScaleAlpha  bool
@@ -14,6 +15,15 @@ type Options struct {
 
 type pixel uint32
 
+// DefaultOptions returns the recommended xBR settings.
+func DefaultOptions() Options {
+	return Options{BlendColors: true}
+}
+
+// Scale scales src using the xBR algorithm.
+//
+// Supported factors are 1, 2, 3, 4, 6, and 8. Factors 6 and 8 are built from
+// multiple passes, matching the original JavaScript implementation.
 func Scale(src image.Image, factor int, options Options) (image.Image, error) {
 	if factor < 1 {
 		return nil, fmt.Errorf("invalid scale factor: %d", factor)
