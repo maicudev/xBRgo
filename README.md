@@ -15,13 +15,13 @@ writes the results as PNG files.
 Run the program with an input directory and an output directory:
 
 ```bash
-go run . [options] <input-directory> <output-directory>
+./xbr [options] <input-directory> <output-directory>
 ```
 
 Example:
 
 ```bash
-go run . -factor 2 ./input ./output
+./xbr -factor 4 ./input ./output
 ```
 
 The `-factor` option is optional and defaults to `2`. Supported values are
@@ -47,7 +47,7 @@ go build -o xbr .
 Run it:
 
 ```bash
-./xbr -factor 2 ./input ./output
+./xbr -factor 4 ./input ./output
 ```
 
 ## Credits

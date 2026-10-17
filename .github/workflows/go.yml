@@ -25,7 +25,7 @@ jobs:
           cache: true
 
       - name: Test
-        run: go test ./...
+        run: go test .
 
   build:
     needs: test
@@ -58,7 +58,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           mkdir -p dist
-          go build -v -o dist/app-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./src
+          go build -v -o dist/xbr-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
