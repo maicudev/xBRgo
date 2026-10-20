@@ -16,6 +16,8 @@ import (
 
 func main() {
 	factor := flag.Int("factor", 2, "scale factor: 2, 3, 4, 6, or 8")
+	blendColors := flag.Bool("blend", true, "blend colors on generated edges")
+	scaleAlpha := flag.Bool("scale-alpha", false, "use alpha when detecting and scaling edges")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [options] <input-directory> <output-directory>\n\n", os.Args[0])
 		flag.PrintDefaults()
@@ -41,6 +43,10 @@ func main() {
 		fatalf("could not read input directory: %v", err)
 	}
 
+	options := xbr.Options{
+		BlendColors: *blendColors,
+		ScaleAlpha:  *scaleAlpha,
+	}
 	processed := 0
 	for _, entry := range entries {
 		if entry.IsDir() || !isImageFile(entry.Name()) {
@@ -51,7 +57,7 @@ func main() {
 		outputName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) + ".png"
 		outputPath := filepath.Join(outputDir, outputName)
 
-		if err := convertFile(inputPath, outputPath, *factor); err != nil {
+		if err := convertFile(inputPath, outputPath, *factor, options); err != nil {
 			fatalf("failed to convert %q: %v", inputPath, err)
 		}
 		processed++
@@ -74,7 +80,7 @@ func isImageFile(name string) bool {
 	}
 }
 
-func convertFile(inputPath, outputPath string, factor int) error {
+func convertFile(inputPath, outputPath string, factor int, options xbr.Options) error {
 	input, err := os.Open(inputPath)
 	if err != nil {
 		return err
@@ -86,7 +92,7 @@ func convertFile(inputPath, outputPath string, factor int) error {
 		return err
 	}
 
-	scaled, err := xbr.Scale(src, factor, xbr.DefaultOptions())
+	scaled, err := xbr.Scale(src, factor, options)
 	if err != nil {
 		return err
 	}

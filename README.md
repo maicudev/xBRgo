@@ -1,17 +1,29 @@
 # xBRgo
 
-**xBRgo** is a Go implementation of the xBR pixel-art scaling algorithm. It provides an importable Go package for integration into other projects and a command-line tool for batch image processing.
+**xBRgo** is a Go implementation of the xBR pixel-art scaling algorithm. It
+can be used either as a Go package or as a command-line tool for processing a
+directory of images.
 
-![](input/image.png)
-![](output/image.png)
+![Input pixel art](input/image.png)
+![Scaled result](output/image.png)
 
 ## Requirements
 
 - Go 1.21 or newer
 
-## Use as a Go package
+## Use xBRgo as a Go package
 
-Import the module and call `xbr.Scale` with any `image.Image`:
+### 1. Install the package
+
+From your Go project, run:
+
+```bash
+go get github.com/maicudev/xBRgo
+```
+
+### 2. Scale an image
+
+The package accepts any `image.Image` and returns a scaled `image.Image`:
 
 ```go
 package main
@@ -53,45 +65,82 @@ func main() {
 }
 ```
 
-Supported scale factors are `1`, `2`, `3`, `4`, `6`, and `8`. Factors `6` and
-`8` use multiple xBR passes:
+Supported package scale factors are `1`, `2`, `3`, `4`, `6`, and `8`.
+Factors `6` and `8` use multiple xBR passes:
 
 - `6x`: `3x` followed by `2x`
 - `8x`: `4x` followed by `2x`
 
-`xbr.DefaultOptions()` enables color blending. For custom behavior, pass an
-`xbr.Options` value directly:
+### Configure the scaling options
+
+`xbr.DefaultOptions()` enables xBR color blending. To use exact
+nearest-neighbor pixel blocks instead, set `BlendColors` to `false`:
 
 ```go
 options := xbr.Options{
-	BlendColors: true,
-	ScaleAlpha:  true,
+	BlendColors: false,
+	ScaleAlpha:  false,
 }
-scaled, err := xbr.Scale(src, 2, options)
+
+scaled, err := xbr.Scale(src, 4, options)
 ```
 
-## Command-line tool
+When blending is disabled, `Scale` preserves each source pixel as an exact
+block. `ScaleAlpha` controls whether alpha participates in xBR edge detection
+and scaling; it has no effect in nearest-neighbor mode.
 
-Build the executable from the `cli` directory:
+## Build the command-line tool
+
+From the repository root, build the executable with:
 
 ```bash
-cd ./cli
-go build -o ../xbr 
+go build -C cli -o ./xbr
 ```
 
-Run it with an input directory and an output directory:
+## Use the command-line tool
+
+The CLI processes image files directly inside an input directory. It supports
+PNG, JPG, JPEG, and GIF input files and writes PNG files to the output
+directory. Subdirectories are not scanned, and the output directory is
+created automatically.
+
+### Basic usage
 
 ```bash
-cd ..
 ./xbr -factor 4 ./input ./output
 ```
 
-The `-factor` option is optional and defaults to `2`. The tool processes PNG,
-JPG, JPEG, and GIF files located directly inside the input directory. It does
-not scan subdirectories. Results are always saved as PNG files in the output
-directory, preserving each input file's base name. The output directory is
-created automatically when it does not exist.
+The `-factor` option supports `2`, `3`, `4`, `6`, and `8`, and defaults to `2`.
+
+### CLI options
+
+| Option | Default | Description |
+| --- | ---: | --- |
+| `-factor` | `2` | Scale factor: `2`, `3`, `4`, `6`, or `8`. |
+| `-blend` | `true` | Blend colors on xBR-generated edges. Set to `false` for exact pixel blocks. |
+| `-scale-alpha` | `false` | Include alpha when detecting and scaling xBR edges. |
+
+For example, to create a pixel-perfect 4x result:
+
+```bash
+./xbr -factor 4 -blend=false ./input ./output
+```
+
+To use xBR with alpha-aware edge detection:
+
+```bash
+./xbr -factor 4 -blend=true -scale-alpha=true ./input ./output
+```
+
+Show all command-line options with:
+
+```bash
+./xbr -h
+```
 
 ## Credits
 
-This implementation is based on the original [xBRjs](https://github.com/joseprio/xBRjs) implementation and the xBR pixel-art scaling algorithm. The 2x, 3x, and 4x kernels, as well as the multi-pass behavior for 6x and 8x scaling, were ported to Go.
+This implementation is based on the
+[xBRjs](https://github.com/joseprio/xBRjs) implementation and the xBR pixel-art
+scaling algorithm. The 2x, 3x, and 4x kernels, as well as the multi-pass
+behavior for 6x and 8x scaling, were ported to Go.

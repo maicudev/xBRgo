@@ -31,6 +31,9 @@ func Scale(src image.Image, factor int, options Options) (image.Image, error) {
 	if factor == 1 {
 		return toNRGBA(src), nil
 	}
+	if !options.BlendColors {
+		return scaleNearest(toNRGBA(src), factor), nil
+	}
 
 	passes := []int{factor}
 	switch factor {
@@ -48,6 +51,24 @@ func Scale(src image.Image, factor int, options Options) (image.Image, error) {
 		result = scalePass(result, pass, options)
 	}
 	return result, nil
+}
+
+// scaleNearest enlarges each source pixel into an exact factor-by-factor
+// block. It is useful when no new colors or edge smoothing are desired.
+func scaleNearest(src *image.NRGBA, factor int) *image.NRGBA {
+	sw, sh := src.Bounds().Dx(), src.Bounds().Dy()
+	dst := image.NewNRGBA(image.Rect(0, 0, sw*factor, sh*factor))
+	for y := 0; y < sh; y++ {
+		for x := 0; x < sw; x++ {
+			c := src.NRGBAAt(x, y)
+			for oy := 0; oy < factor; oy++ {
+				for ox := 0; ox < factor; ox++ {
+					dst.SetNRGBA(x*factor+ox, y*factor+oy, c)
+				}
+			}
+		}
+	}
+	return dst
 }
 
 func toNRGBA(src image.Image) *image.NRGBA {
@@ -134,27 +155,50 @@ func rgba(p pixel) (float64, float64, float64, float64) {
 	return float64(uint8(p >> 24)), float64(uint8(p >> 16)), float64(uint8(p >> 8)), float64(uint8(p))
 }
 
+func yuv(p pixel) (float64, float64, float64) {
+	r, g, b, _ := rgba(p)
+	return 0.299000*r + 0.587000*g + 0.114000*b,
+		-0.168736*r - 0.331264*g + 0.500000*b,
+		0.500000*r - 0.418688*g - 0.081312*b
+}
+
 func yuvDifference(a, b pixel, scaleAlpha bool) float64 {
-	ar, ag, ab, aa := rgba(a)
-	br, bg, bb, ba := rgba(b)
-	ay := 0.299*ar + 0.587*ag + 0.114*ab
-	au := -0.169*ar - 0.331*ag + 0.500*ab
-	av := 0.500*ar - 0.419*ag - 0.081*ab
-	by := 0.299*br + 0.587*bg + 0.114*bb
-	bu := -0.169*br - 0.331*bg + 0.500*bb
-	bv := 0.500*br - 0.419*bg - 0.081*bb
-	diff := math.Abs(ay-by)*48 + math.Abs(au-bu)*7 + math.Abs(av-bv)*6
-	if scaleAlpha {
-		diff += math.Abs(aa-ba) * 48
+	_, _, _, aa := rgba(a)
+	_, _, _, ba := rgba(b)
+
+	// RGB values in a fully transparent pixel are undefined. Treating them as
+	// real colors makes the edge detector invent diagonal edges around sprites.
+	if aa == 0 && ba == 0 {
+		return 0
 	}
-	return diff
+	if !scaleAlpha && (aa < 255 || ba < 255) {
+		return 1000000
+	}
+	if aa == 0 || ba == 0 {
+		return 1000000
+	}
+
+	ay, au, av := yuv(a)
+	by, bu, bv := yuv(b)
+	return math.Abs(ay-by)*48 + math.Abs(au-bu)*7 + math.Abs(av-bv)*6
 }
 
 func isEqual(a, b pixel, scaleAlpha bool) bool {
-	if scaleAlpha {
-		return a == b
+	_, _, _, aa := rgba(a)
+	_, _, _, ba := rgba(b)
+	if aa == 0 && ba == 0 {
+		return true
 	}
-	return a>>8 == b>>8
+	if !scaleAlpha && (aa < 255 || ba < 255) {
+		return false
+	}
+	if aa == 0 || ba == 0 {
+		return false
+	}
+
+	ay, au, av := yuv(a)
+	by, bu, bv := yuv(b)
+	return math.Abs(ay-by) <= 48 && math.Abs(au-bu) <= 7 && math.Abs(av-bv) <= 6
 }
 
 func pixelInterpolate(dst, src pixel, dstWeight, srcWeight int) pixel {
@@ -162,7 +206,14 @@ func pixelInterpolate(dst, src pixel, dstWeight, srcWeight int) pixel {
 	dr, dg, db, da := rgba(dst)
 	sr, sg, sb, sa := rgba(src)
 	blend := func(a, b float64) uint8 {
-		return uint8(math.Round((a*float64(dstWeight) + b*float64(srcWeight)) / float64(total)))
+		return uint8((a*float64(dstWeight) + b*float64(srcWeight)) / float64(total))
+	}
+	// Keep transparent RGB out of blends. Those channels are commonly left
+	// unassociated by PNG tools and must not create colored halos on diagonals.
+	if da == 0 {
+		dr, dg, db = sr, sg, sb
+	} else if sa == 0 {
+		sr, sg, sb = dr, dg, db
 	}
 	return makePixel(color.NRGBA{R: blend(dr, sr), G: blend(dg, sg), B: blend(db, sb), A: blend(da, sa)})
 }
